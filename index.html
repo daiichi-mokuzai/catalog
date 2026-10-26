@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>WEB商品カタログ</title>
+<style>
+:root{--desk:#2c3732;--paper:#fcfbf8;--ink:#1d2321;--sub:#6a736f;--line:#dcdad3;--mark:#1f4fa3;--bar:#1e2724;
+ font-family:"Hiragino Sans","BIZ UDPGothic","Yu Gothic",Meiryo,sans-serif}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;background:var(--desk);color:var(--ink);overflow:hidden}
+#stage{position:fixed;inset:0 0 calc(56px + env(safe-area-inset-bottom)) 0;display:flex;justify-content:center;padding-top:env(safe-area-inset-top)}
+body.edit #stage{bottom:calc(104px + env(safe-area-inset-bottom))}
+#book{position:relative;width:min(100%,560px);height:100%;perspective:1800px;touch-action:pan-y;user-select:none}
+.leaf{position:absolute;inset:0;background:var(--paper);transform-origin:left center;overflow-y:auto;overscroll-behavior:contain;
+ box-shadow:0 0 28px rgba(0,0,0,.35);transition:transform .6s cubic-bezier(.3,.7,.2,1),opacity .2s .4s;touch-action:pan-y;
+ background-image:linear-gradient(90deg,rgba(0,0,0,.10),transparent 22px)}
+.leaf.gone{transform:rotateY(-110deg);opacity:0;pointer-events:none}
+.leaf.far{visibility:hidden}
+.inner{padding:28px 24px 72px 34px}
+h1,h2{margin:0;line-height:1.35;letter-spacing:.02em}
+h2{font-size:1.5rem;font-weight:700}
+.cat{display:inline-block;font-size:.8rem;color:var(--mark);border:1.5px solid var(--mark);padding:1px 8px;margin-bottom:10px;border-radius:2px}
+.inner img{display:block;width:100%;height:auto;margin:16px 0;background:#eee}
+.noimg{margin:16px 0;aspect-ratio:4/3;display:grid;place-items:center;background:repeating-linear-gradient(135deg,#f0eee8 0 10px,#e9e6de 10px 20px);color:var(--sub);font-size:.9rem}
+.desc{line-height:1.9;font-size:1rem;margin:8px 0 20px}
+table{width:100%;border-collapse:collapse;font-size:.95rem}
+th,td{text-align:left;padding:10px 6px;border-top:1px solid var(--line);vertical-align:top}
+th{width:32%;font-weight:600;color:var(--sub)}
+tr:last-child th,tr:last-child td{border-bottom:1px solid var(--line)}
+.cover{min-height:100%;display:flex;flex-direction:column;justify-content:flex-end;gap:10px;padding-top:0}
+.rings{height:46vh;min-height:220px;margin:-28px -24px 24px -34px;
+ background:repeating-radial-gradient(circle at 78% 40%,#b9814a 0 6px,#a8723f 6px 9px,#c98f55 9px 15px,#9a6637 15px 17px)}
+.cover h1{font-size:2.3rem;font-weight:800}
+.cover p{margin:0;color:var(--sub)}
+.hint{font-size:.85rem;margin-top:18px!important;color:var(--mark)!important}
+.toc{list-style:none;margin:18px 0 0;padding:0}
+.toc li{display:flex;gap:10px;align-items:baseline;padding:14px 4px;border-bottom:1px solid var(--line);cursor:pointer}
+.toc span{font-weight:600;flex:1}.toc em{font-style:normal;color:var(--sub);font-size:.82rem}.toc b{font-weight:600;color:var(--mark);min-width:2ch;text-align:right}
+#bar,#ebar{position:fixed;left:0;right:0;display:flex;justify-content:center;gap:6px;align-items:center;background:var(--bar);padding:8px 10px}
+#bar{bottom:0;height:calc(56px + env(safe-area-inset-bottom));padding-bottom:calc(8px + env(safe-area-inset-bottom))}
+#ebar{bottom:calc(56px + env(safe-area-inset-bottom));height:48px;display:none;background:#26322d;border-bottom:1px solid #3b4943}
+body.edit #ebar{display:flex}
+button{font:inherit;color:#fff;background:#37453f;border:0;border-radius:6px;padding:8px 14px;cursor:pointer;min-height:40px}
+button:hover{background:#44554d}
+button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px solid #8fb4ff;outline-offset:1px}
+button.pri{background:var(--mark)}
+#pg{color:#dfe5e2;min-width:5.5em;text-align:center;font-variant-numeric:tabular-nums}
+.ebtn{display:none;margin:0 0 12px;background:var(--mark)}
+body.edit .ebtn{display:inline-block}
+dialog{border:0;border-radius:10px;padding:0;width:min(94vw,520px);max-height:92vh;background:#fff;color:var(--ink)}
+dialog::backdrop{background:rgba(0,0,0,.55)}
+dialog form{padding:18px;display:flex;flex-direction:column;gap:12px}
+dialog h3{margin:0}
+label{display:flex;flex-direction:column;gap:4px;font-size:.85rem;color:var(--sub)}
+input,textarea{font:inherit;color:var(--ink);padding:9px;border:1px solid #b9bdb8;border-radius:6px;width:100%}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.row span{flex:1}
+dialog button{background:#e8eae7;color:var(--ink)}dialog button.pri{background:var(--mark);color:#fff}dialog button.dg{color:#b3261e}
+.ths{display:flex;gap:8px;flex-wrap:wrap}.th{position:relative}.th img{width:84px;height:64px;object-fit:cover;border-radius:4px;display:block}
+.th button{position:absolute;top:-6px;right:-6px;min-height:0;padding:0;width:22px;height:22px;border-radius:11px;background:#b3261e;color:#fff}
+.note{font-size:.8rem;color:var(--sub);margin:0;line-height:1.6}
+#toast{position:fixed;left:50%;top:14px;transform:translateX(-50%);background:#111;color:#fff;padding:10px 16px;border-radius:8px;opacity:0;pointer-events:none;transition:opacity .25s;z-index:99;max-width:92vw}
+#toast.on{opacity:1}
+@media (prefers-reduced-motion:reduce){.leaf{transition:none}}
+</style>
+</head>
+<body>
+<div id="stage"><div id="book" aria-live="polite"></div></div>
+<div id="ebar">
+ <button id="eAdd">＋商品を追加</button><button id="ePub" class="pri">公開する</button><button id="eSet">設定</button><button id="eEnd">編集を終える</button>
+</div>
+<nav id="bar">
+ <button id="bPrev" aria-label="前のページ">‹</button><span id="pg"></span><button id="bNext" aria-label="次のページ">›</button>
+ <button id="bToc">目次</button><button id="bEdit">編集</button>
+</nav>
+<dialog id="dlg"></dialog>
+<div id="toast" role="status"></div>
+<script>
+const FALLBACK={title:"商品カタログ",subtitle:"",products:[]};
+const $=s=>document.querySelector(s), book=$('#book'), dlg=$('#dlg');
+const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+let data=FALLBACK, idx=0, leaves=[], dirty=false, pending={};
+const src=p=>pending[p]||p;
+const cfg=()=>{try{const c=JSON.parse(localStorage.getItem('cat_cfg'));return c&&c.owner&&c.repo&&c.token?c:null}catch{return null}};
+function toast(t,ms=3500){const e=$('#toast');e.textContent=t;e.classList.add('on');clearTimeout(toast.t);toast.t=setTimeout(()=>e.classList.remove('on'),ms)}
+
+/* ---------- 表示 ---------- */
+function build(){
+ const pages=[];
+ pages.push(`<div class="cover"><div class="rings"></div><h1>${esc(data.title)}</h1><p>${esc(data.subtitle)}</p><button class="ebtn" data-cover>表紙を編集</button><p class="hint">左へスワイプしてめくる</p></div>`);
+ pages.push(`<h2>目次</h2><ol class="toc">${data.products.map((p,i)=>`<li data-go="${i+2}"><span>${esc(p.name)}</span><em>${esc(p.category)}</em><b>${i+3}</b></li>`).join('')||'<li>商品がまだありません</li>'}</ol>`);
+ data.products.forEach((p,i)=>pages.push(
+  `<button class="ebtn" data-edit="${i}">この商品を編集</button><div class="cat">${esc(p.category)}</div><h2>${esc(p.name)}</h2>`+
+  ((p.images||[]).map(u=>`<img src="${esc(src(u))}" alt="${esc(p.name)}" loading="lazy" draggable="false">`).join('')||'<div class="noimg">写真なし</div>')+
+  `<p class="desc">${esc(p.description).replace(/\n/g,'<br>')}</p>`+
+  ((p.specs||[]).length?`<table>${p.specs.map(s=>`<tr><th>${esc(s[0])}</th><td>${esc(s[1])}</td></tr>`).join('')}</table>`:'')));
+ book.innerHTML=pages.map(h=>`<section class="leaf"><div class="inner">${h}</div></section>`).join('');
+ leaves=[...book.children];
+ idx=Math.min(idx,leaves.length-1);
+ render();
+}
+function render(){
+ leaves.forEach((l,i)=>{l.style.zIndex=leaves.length-i;l.classList.toggle('gone',i<idx);l.classList.toggle('far',i>idx+1)});
+ $('#pg').textContent=`${idx+1} / ${leaves.length}`;
+ $('#bPrev').disabled=idx===0;$('#bNext').disabled=idx===leaves.length-1;
+ history.replaceState(null,'','#p'+(idx+1));
+}
+const go=n=>{idx=Math.max(0,Math.min(leaves.length-1,n));render()};
+
+/* ---------- スワイプ（紙をめくる動き） ---------- */
+let sx,sy,dx,mode=0,pid=null,moved=false;
+book.addEventListener('pointerdown',e=>{if(e.target.closest('button'))return;sx=e.clientX;sy=e.clientY;dx=0;mode=0;pid=e.pointerId});
+book.addEventListener('pointermove',e=>{
+ if(pid!==e.pointerId)return;
+ dx=e.clientX-sx;const dy=e.clientY-sy;
+ if(!mode){
+  if(Math.abs(dx)>10&&Math.abs(dx)>Math.abs(dy)*1.3){mode=1;book.setPointerCapture(pid)}
+  else if(Math.abs(dy)>10)mode=2;
+ }
+ if(mode===1)drag(dx);
+});
+function drag(dx){
+ const w=book.clientWidth;let el,deg;
+ if(dx<0&&idx<leaves.length-1){el=leaves[idx];deg=Math.min(110,-dx/w*154)}
+ else if(dx>0&&idx>0){el=leaves[idx-1];deg=Math.max(0,110-dx/w*154)}
+ else return;
+ leaves.forEach(l=>l.style.transition='none');
+ el.style.opacity=1;el.style.transform=`rotateY(${-deg}deg)`;
+}
+function endDrag(){
+ if(mode===1){
+  moved=true;setTimeout(()=>moved=false,50);
+  const w=book.clientWidth;
+  if(dx<-w*.18&&idx<leaves.length-1)idx++;else if(dx>w*.18&&idx>0)idx--;
+  leaves.forEach(l=>{l.style.transition='';l.style.opacity='';l.style.transform=''});
+  render();
+ }
+ mode=0;pid=null;
+}
+book.addEventListener('pointerup',endDrag);book.addEventListener('pointercancel',endDrag);
+book.addEventListener('click',e=>{
+ if(moved)return;
+ const li=e.target.closest('[data-go]');if(li)return go(+li.dataset.go);
+ const eb=e.target.closest('[data-edit]');if(eb)return editProduct(+eb.dataset.edit);
+ if(e.target.closest('[data-cover]'))editCover();
+});
+addEventListener('keydown',e=>{if(dlg.open)return;if(e.key==='ArrowLeft')go(idx-1);if(e.key==='ArrowRight')go(idx+1)});
+$('#bPrev').onclick=()=>go(idx-1);$('#bNext').onclick=()=>go(idx+1);$('#bToc').onclick=()=>go(1);
+
+/* ---------- 編集 ---------- */
+$('#bEdit').onclick=()=>{document.body.classList.add('edit');toast('編集モード：各ページの青いボタンから編集できます')};
+$('#eEnd').onclick=()=>{if(dirty&&!confirm('公開していない変更があります。編集を終えますか？'))return;document.body.classList.remove('edit')};
+$('#eAdd').onclick=()=>{data.products.push({id:'p'+Date.now().toString(36),name:'新しい商品',category:'',images:[],description:'',specs:[]});dirty=true;idx=data.products.length+1;build();editProduct(data.products.length-1)};
+$('#eSet').onclick=settings;$('#ePub').onclick=publish;
+addEventListener('beforeunload',e=>{if(dirty){e.preventDefault();e.returnValue=''}});
+
+function editCover(){
+ dlg.innerHTML=`<form method="dialog"><h3>表紙を編集</h3><label>タイトル<input name="t" value="${esc(data.title)}"></label><label>サブタイトル<input name="s" value="${esc(data.subtitle)}"></label>
+ <div class="row"><span></span><button value="cancel">閉じる</button><button class="pri" value="ok">反映</button></div></form>`;
+ dlg.onclose=()=>{if(dlg.returnValue==='ok'){data.title=dlg.querySelector('[name=t]').value;data.subtitle=dlg.querySelector('[name=s]').value;dirty=true;build()}};
+ dlg.showModal();
+}
+function editProduct(i){
+ const p=data.products[i];let imgs=[...(p.images||[])];
+ dlg.innerHTML=`<form method="dialog"><h3>商品を編集</h3>
+ <label>商品名<input name="name" value="${esc(p.name)}"></label>
+ <label>カテゴリ<input name="category" value="${esc(p.category)}"></label>
+ <label>説明<textarea name="description" rows="5">${esc(p.description)}</textarea></label>
+ <label>仕様（1行に「項目：値」）<textarea name="specs" rows="4">${esc((p.specs||[]).map(s=>s.join('：')).join('\n'))}</textarea></label>
+ <label>写真（上から順に表示）</label><div class="ths" id="ths"></div>
+ <label><input type="file" id="fi" accept="image/*" multiple></label>
+ <div class="row"><button type="button" class="dg" id="del">削除</button><button type="button" id="up">前へ</button><button type="button" id="dn">後ろへ</button><span></span><button value="cancel">閉じる</button><button class="pri" value="ok">反映</button></div></form>`;
+ const draw=()=>{dlg.querySelector('#ths').innerHTML=imgs.map((u,k)=>`<div class="th"><img src="${esc(src(u))}" alt=""><button type="button" data-rm="${k}" aria-label="写真を外す">×</button></div>`).join('')};
+ draw();
+ dlg.querySelector('#ths').onclick=e=>{const b=e.target.closest('[data-rm]');if(b){imgs.splice(+b.dataset.rm,1);draw()}};
+ dlg.querySelector('#fi').onchange=async e=>{
+  let n=0;
+  for(const f of e.target.files){
+   try{const path=`images/${p.id}-${Date.now()}-${n++}.jpg`;pending[path]=await shrink(f);imgs.push(path)}catch{toast('読み込めない写真がありました')}
+  }
+  e.target.value='';draw();
+ };
+ const move=d=>{const j=i+d;if(j<0||j>=data.products.length)return;[data.products[i],data.products[j]]=[data.products[j],data.products[i]];dirty=true;idx=j+2;dlg.onclose=null;dlg.close();build()};
+ dlg.querySelector('#up').onclick=()=>move(-1);dlg.querySelector('#dn').onclick=()=>move(1);
+ dlg.querySelector('#del').onclick=()=>{if(!confirm(`「${p.name}」を削除しますか？`))return;data.products.splice(i,1);dirty=true;idx=Math.min(idx,data.products.length+1);dlg.onclose=null;dlg.close();build()};
+ dlg.onclose=()=>{
+  if(dlg.returnValue!=='ok')return;
+  const g=n=>dlg.querySelector(`[name=${n}]`).value;
+  p.name=g('name');p.category=g('category');p.description=g('description');p.images=imgs;
+  p.specs=g('specs').split('\n').map(l=>l.trim()).filter(Boolean).map(l=>{const m=l.search(/[：:]/);return m<0?[l,'']:[l.slice(0,m).trim(),l.slice(m+1).trim()]});
+  dirty=true;build();
+ };
+ dlg.returnValue='';dlg.showModal();
+}
+async function shrink(file){
+ const bmp=await createImageBitmap(file),r=Math.min(1,1600/Math.max(bmp.width,bmp.height));
+ const c=document.createElement('canvas');c.width=Math.round(bmp.width*r);c.height=Math.round(bmp.height*r);
+ c.getContext('2d').drawImage(bmp,0,0,c.width,c.height);
+ return c.toDataURL('image/jpeg',.82);
+}
+
+/* ---------- GitHubへ公開 ---------- */
+function settings(){
+ const c=cfg()||{branch:'main'};
+ dlg.innerHTML=`<form method="dialog"><h3>公開の設定（この端末だけに保存）</h3>
+ <label>GitHubのユーザー名／組織名<input name="owner" value="${esc(c.owner)}"></label>
+ <label>リポジトリ名<input name="repo" value="${esc(c.repo)}"></label>
+ <label>ブランチ<input name="branch" value="${esc(c.branch||'main')}"></label>
+ <label>アクセストークン<input name="token" type="password" value="${esc(c.token)}" autocomplete="off"></label>
+ <p class="note">トークンは GitHub の Fine-grained token（このリポジトリの Contents を Read and write）。詳しくは README を見てください。</p>
+ <div class="row"><span></span><button value="cancel">閉じる</button><button class="pri" value="ok">保存</button></div></form>`;
+ dlg.onclose=()=>{if(dlg.returnValue==='ok'){const g=n=>dlg.querySelector(`[name=${n}]`).value.trim();localStorage.setItem('cat_cfg',JSON.stringify({owner:g('owner'),repo:g('repo'),branch:g('branch')||'main',token:g('token')}));toast('設定を保存しました')}};
+ dlg.returnValue='';dlg.showModal();
+}
+const b64=s=>btoa(unescape(encodeURIComponent(s)));
+async function put(c,path,content,msg){
+ const url=`https://api.github.com/repos/${c.owner}/${c.repo}/contents/${path}`,h={Authorization:'Bearer '+c.token,Accept:'application/vnd.github+json'};
+ let sha;const g=await fetch(`${url}?ref=${c.branch}`,{headers:h});if(g.ok)sha=(await g.json()).sha;
+ const r=await fetch(url,{method:'PUT',headers:h,body:JSON.stringify({message:msg,content,branch:c.branch,sha})});
+ if(!r.ok)throw new Error((await r.json()).message||r.status);
+}
+async function publish(){
+ const c=cfg();if(!c)return settings();
+ if(!dirty)return toast('公開する変更はありません');
+ const used=new Set(data.products.flatMap(p=>p.images||[]));
+ try{
+  $('#ePub').disabled=true;toast('公開中…少しお待ちください',60000);
+  for(const [path,url] of Object.entries(pending)){if(used.has(path))await put(c,path,url.split(',')[1],'写真を追加')}
+  await put(c,'data/catalog.json',b64(JSON.stringify(data,null,1)+'\n'),'カタログを更新');
+  pending={};dirty=false;toast('公開しました。サイトへの反映まで1〜2分かかります',6000);
+ }catch(e){toast('公開できませんでした：'+e.message+'（設定とトークンの権限を確認してください）',8000)}
+ finally{$('#ePub').disabled=false}
+}
+
+/* ---------- 起動 ---------- */
+fetch('data/catalog.json?'+Date.now()).then(r=>r.json()).catch(()=>FALLBACK).then(d=>{
+ data=d;const m=/^#p(\d+)$/.exec(location.hash);if(m)idx=+m[1]-1;build();
+});
+</script>
+</body>
+</html>
